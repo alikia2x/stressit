@@ -2,10 +2,10 @@ name: Go Build and Release
 
 on:
   release:
-    types: [published] # 仅在发布 Release 时触发
+    types: [published, created]
 
 permissions:
-  contents: write # 确保 GITHUB_TOKEN 有权限上传到 Release
+  contents: write
 
 jobs:
   build:
