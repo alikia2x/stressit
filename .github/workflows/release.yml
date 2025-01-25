@@ -1,8 +1,9 @@
-name: Go Build and Release
+name: Build and Release
 
 on:
-  release:
-    types: [released]
+  push:
+    tags:
+      - "v*"
 
 permissions:
   contents: write
@@ -42,26 +43,40 @@ jobs:
   upload-release-assets:
     needs: build
     runs-on: ubuntu-latest
+    name: Release pushed tag
     steps:
       - name: Download Artifacts
         uses: actions/download-artifact@v4
         with:
           path: dist
 
-      - name: Upload to Release (Linux)
-        run: |
-          gh release upload ${{ github.event.release.tag_name }} dist/stressit-ubuntu-latest-amd64
+      - name: Create release
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref_name }}
+        run: |
+          gh release create "$tag" \
+              --repo="$GITHUB_REPOSITORY" \
+              --title="Stable Release: ${tag#v}" \
+              --generate-notes
+
+      - name: Upload to Release (Linux)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref_name }}
+        run: |
+          gh release upload "Stable Release: ${tag}" dist/stressit-ubuntu-latest-amd64
 
       - name: Upload to Release (macOS)
         run: |
-          gh release upload ${{ github.event.release.tag_name }} dist/stressit-macos-latest-amd64
+          gh release upload "Stable Release: ${tag}" dist/stressit-macos-latest-amd64
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          tag: ${{ github.ref_name }}
 
       - name: Upload to Release (Windows)
         run: |
-          gh release upload ${{ github.event.release.tag_name }} dist/stressit-windows-latest-amd64.exe
+          gh release upload "Stable Release: ${tag}" dist/stressit-windows-latest-amd64.exe
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          tag: ${{ github.ref_name }}
