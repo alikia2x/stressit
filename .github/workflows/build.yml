@@ -1,10 +1,11 @@
-name: Go Build
+name: Go Build and Release
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  release:
+    types: [published] # 仅在发布 Release 时触发
+
+permissions:
+  contents: write # 确保 GITHUB_TOKEN 有权限上传到 Release
 
 jobs:
   build:
@@ -18,12 +19,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
           go-version: '1.21.5'
-          
+
       - name: Build
         env:
           GOOS: ${{ matrix.os == 'windows-latest' && 'windows' || matrix.os == 'macos-latest' && 'darwin' || 'linux' }}
@@ -31,8 +32,36 @@ jobs:
         run: |
           mkdir -p dist
           go build -o dist/stressit-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.os == 'windows-latest' && '.exe' || '' }} .
-          
-      - uses: actions/upload-artifact@v3
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
         with:
           name: stressit-${{ matrix.os }}-${{ matrix.arch }}
           path: dist/
+
+  upload-release-assets:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Upload to Release (Linux)
+        run: |
+          gh release upload ${{ github.event.release.tag_name }} dist/stressit-ubuntu-latest-amd64
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Upload to Release (macOS)
+        run: |
+          gh release upload ${{ github.event.release.tag_name }} dist/stressit-macos-latest-amd64
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Upload to Release (Windows)
+        run: |
+          gh release upload ${{ github.event.release.tag_name }} dist/stressit-windows-latest-amd64.exe
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
